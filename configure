@@ -917,8 +917,6 @@ enable_isc_spnego
 enable_chroot
 enable_linux_caps
 enable_fixed_rrset
-enable_rpz_nsip
-enable_rpz_nsdname
 enable_dnstap
 with_protobuf_c
 with_libfstrm
@@ -1605,8 +1603,6 @@ Optional Features:
   --disable-chroot        disable chroot
   --disable-linux-caps    disable Linux capabilities
   --enable-fixed-rrset    enable fixed rrset ordering [default=no]
-  --disable-rpz-nsip      disable rpz nsip rules [default=enabled]
-  --disable-rpz-nsdname   disable rpz nsdname rules [default=enabled]
   --enable-dnstap         enable dnstap support (requires fstrm, protobuf-c)
   --enable-querytrace     enable very verbose query trace logging [default=no]
   --enable-auto-validation
@@ -13579,7 +13575,7 @@ if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
-  as_fn_error $? "no, try adding -march=native or -march=armv7-a to CFLAGS (see PLATFORM.md for more information)" "$LINENO" 5
+  as_fn_error $? "no, try adding -march=native or -march=armv7-a to CFLAGS (see PLATFORMS.md for more information)" "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext ;; #(
   *) :
@@ -15617,10 +15613,11 @@ $as_echo_n "checking for ECDSA P-256 support... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/evp.h>
+		       #include <openssl/ec.h>
 int
 main ()
 {
-EVP_PKEY_CTX *ctx = NID_X9_62_prime256v1;
+EC_KEY *key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
   ;
   return 0;
 }
@@ -15641,10 +15638,11 @@ $as_echo_n "checking for ECDSA P-384 support... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/evp.h>
+		       #include <openssl/ec.h>
 int
 main ()
 {
-EVP_PKEY_CTX *ctx = NID_secp384r1;
+EC_KEY *key = EC_KEY_new_by_curve_name(NID_secp384r1);
   ;
   return 0;
 }
@@ -15665,10 +15663,11 @@ $as_echo_n "checking for Ed25519 support... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/evp.h>
+		       #include <openssl/ec.h>
 int
 main ()
 {
-EVP_PKEY_CTX *ctx = NID_ED25519;
+EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED25519);
   ;
   return 0;
 }
@@ -15690,8 +15689,9 @@ $as_echo_n "checking for Ed448 support... " >&6; }
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: broken" >&5
 $as_echo "broken" >&6; }
 #AC_COMPILE_IFELSE(
-#    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
-#		     [[EVP_PKEY_CTX *ctx = NID_ED448;]])],
+#    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
+#		       #include <openssl/ec.h>]],
+#		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);]])],
 #    [AC_DEFINE([HAVE_OPENSSL_ED448], [1], [define if OpenSSL supports Ed448])
 #     AC_MSG_RESULT([yes])],
 #    [AC_MSG_RESULT([no])])
@@ -18171,50 +18171,6 @@ case "$enable_fixed" in
 	yes)
 
 $as_echo "#define DNS_RDATASET_FIXED 1" >>confdefs.h
-
-		;;
-	no)
-		;;
-	*)
-		;;
-esac
-
-#
-# Enable response policy rewriting using NS IP addresses
-#
-# Check whether --enable-rpz-nsip was given.
-if test "${enable_rpz_nsip+set}" = set; then :
-  enableval=$enable_rpz_nsip; enable_nsip="$enableval"
-else
-  enable_nsip="yes"
-fi
-
-case "$enable_nsip" in
-	yes)
-
-$as_echo "#define ENABLE_RPZ_NSIP 1" >>confdefs.h
-
-		;;
-	no)
-		;;
-	*)
-		;;
-esac
-
-#
-# Enable response policy rewriting using NS name
-#
-# Check whether --enable-rpz-nsdname was given.
-if test "${enable_rpz_nsdname+set}" = set; then :
-  enableval=$enable_rpz_nsdname; enable_nsdname="$enableval"
-else
-  enable_nsdname="yes"
-fi
-
-case "$enable_nsdname" in
-	yes)
-
-$as_echo "#define ENABLE_RPZ_NSDNAME 1" >>confdefs.h
 
 		;;
 	no)

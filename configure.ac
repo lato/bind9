@@ -414,7 +414,7 @@ AS_CASE([$host],
 	       [[__asm__ __volatile__ ("yield")]]
 	     )],
 	    [AC_MSG_RESULT([yes])],
-	    [AC_MSG_ERROR([no, try adding -march=native or -march=armv7-a to CFLAGS (see PLATFORM.md for more information)])])])
+	    [AC_MSG_ERROR([no, try adding -march=native or -march=armv7-a to CFLAGS (see PLATFORMS.md for more information)])])])
 
 AC_CHECK_FUNCS([sysctlbyname])
 
@@ -753,22 +753,25 @@ AC_CHECK_FUNCS([ECDSA_sign ECDSA_verify], [:],
 
 AC_MSG_CHECKING([for ECDSA P-256 support])
 AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
-		     [[EVP_PKEY_CTX *ctx = NID_X9_62_prime256v1;]])],
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
+		       #include <openssl/ec.h>]],
+		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);]])],
     [AC_MSG_RESULT([yes])],
     [AC_MSG_FAILURE([not found.  ECDSA P-256 support in OpenSSL is mandatory.])])
 
 AC_MSG_CHECKING([for ECDSA P-384 support])
 AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
-		     [[EVP_PKEY_CTX *ctx = NID_secp384r1;]])],
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
+		       #include <openssl/ec.h>]],
+		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_secp384r1);]])],
     [AC_MSG_RESULT([yes])],
     [AC_MSG_FAILURE([not found.  ECDSA P-384 support in OpenSSL is mandatory.])])
 
 AC_MSG_CHECKING([for Ed25519 support])
 AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
-		     [[EVP_PKEY_CTX *ctx = NID_ED25519;]])],
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
+		       #include <openssl/ec.h>]],
+		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED25519);]])],
     [AC_DEFINE([HAVE_OPENSSL_ED25519], [1], [define if OpenSSL supports Ed25519])
      AC_MSG_RESULT([yes])],
     [AC_MSG_RESULT([no])])
@@ -776,8 +779,9 @@ AC_COMPILE_IFELSE(
 AC_MSG_CHECKING([for Ed448 support])
 AC_MSG_RESULT([broken])
 #AC_COMPILE_IFELSE(
-#    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
-#		     [[EVP_PKEY_CTX *ctx = NID_ED448;]])],
+#    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
+#		       #include <openssl/ec.h>]],
+#		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);]])],
 #    [AC_DEFINE([HAVE_OPENSSL_ED448], [1], [define if OpenSSL supports Ed448])
 #     AC_MSG_RESULT([yes])],
 #    [AC_MSG_RESULT([no])])
@@ -2027,42 +2031,6 @@ case "$enable_fixed" in
 	yes)
 		AC_DEFINE(DNS_RDATASET_FIXED, 1,
 			  [Define to enable "rrset-order fixed" syntax.])
-		;;
-	no)
-		;;
-	*)
-		;;
-esac
-
-#
-# Enable response policy rewriting using NS IP addresses
-#
-AC_ARG_ENABLE(rpz-nsip,
-	      AS_HELP_STRING([--disable-rpz-nsip],
-			     [disable rpz nsip rules [default=enabled]]),
-	      enable_nsip="$enableval", enable_nsip="yes")
-case "$enable_nsip" in
-	yes)
-		AC_DEFINE(ENABLE_RPZ_NSIP, 1,
-			  [Define to enable rpz nsip rules.])
-		;;
-	no)
-		;;
-	*)
-		;;
-esac
-
-#
-# Enable response policy rewriting using NS name
-#
-AC_ARG_ENABLE(rpz-nsdname,
-	      AS_HELP_STRING([--disable-rpz-nsdname],
-			     [disable rpz nsdname rules [default=enabled]]),
-	      enable_nsdname="$enableval", enable_nsdname="yes")
-case "$enable_nsdname" in
-	yes)
-		AC_DEFINE(ENABLE_RPZ_NSDNAME, 1,
-			  [Define to enable rpz nsdname rules.])
 		;;
 	no)
 		;;

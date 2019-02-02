@@ -2289,21 +2289,18 @@ configure_rpz(dns_view_t *view, const cfg_obj_t **maps,
 	if (zone_element == NULL)
 		return (ISC_R_SUCCESS);
 
-#ifdef ENABLE_RPZ_NSIP
 	nsip_enabled = true;
-	nsdname_enabled = true;
-#else
-	nsip_enabled = false;
-	nsdname_enabled = false;
-#endif
 	sub_obj = cfg_tuple_get(rpz_obj, "nsip-enable");
-	if (!cfg_obj_isvoid(sub_obj))
+	if (!cfg_obj_isvoid(sub_obj)) {
 		nsip_enabled = cfg_obj_asboolean(sub_obj);
+	}
 	nsip_on = nsip_enabled ? DNS_RPZ_ALL_ZBITS : 0;
 
+	nsdname_enabled = true;
 	sub_obj = cfg_tuple_get(rpz_obj, "nsdname-enable");
-	if (!cfg_obj_isvoid(sub_obj))
+	if (!cfg_obj_isvoid(sub_obj)) {
 		nsdname_enabled = cfg_obj_asboolean(sub_obj);
+	}
 	nsdname_on = nsdname_enabled ? DNS_RPZ_ALL_ZBITS : 0;
 
 	/*
@@ -2578,8 +2575,8 @@ catz_addmodzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 	result = dns_catz_generate_zonecfg(ev->origin, ev->entry, &confbuf);
 	if (result == ISC_R_SUCCESS) {
 		cfg_parser_reset(cfg->add_parser);
-		result = cfg_parse_buffer3(cfg->add_parser, confbuf, "catz", 0,
-					   &cfg_type_addzoneconf, &zoneconf);
+		result = cfg_parse_buffer(cfg->add_parser, confbuf, "catz", 0,
+					  &cfg_type_addzoneconf, 0, &zoneconf);
 		isc_buffer_free(&confbuf);
 	}
 	/*
@@ -7645,8 +7642,8 @@ data_to_cfg(dns_view_t *view, MDB_val *key, MDB_val *data,
 	CHECK(putstr(text, ";\n"));
 
 	cfg_parser_reset(named_g_addparser);
-	result = cfg_parse_buffer3(named_g_addparser, *text, zone_name, 0,
-				   &cfg_type_addzoneconf, &zoneconf);
+	result = cfg_parse_buffer(named_g_addparser, *text, zone_name, 0,
+				  &cfg_type_addzoneconf, 0, &zoneconf);
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
@@ -8025,6 +8022,7 @@ load_configuration(const char *filename, named_server_t *server,
 	ns_altsecretlist_t altsecrets, tmpaltsecrets;
 	unsigned int maxsocks;
 	uint32_t softquota = 0;
+	uint32_t max;
 	unsigned int initial, idle, keepalive, advertised;
 	dns_aclenv_t *env =
 		ns_interfacemgr_getaclenv(named_g_server->interfacemgr);
@@ -8217,20 +8215,20 @@ load_configuration(const char *filename, named_server_t *server,
 	configure_server_quota(maps, "recursive-clients",
 			       &server->sctx->recursionquota);
 
-	if (server->sctx->recursionquota.max > 1000) {
-		int margin = ISC_MAX(100, named_g_cpus + 1);
-		if (margin > server->sctx->recursionquota.max - 100) {
+	max = isc_quota_getmax(&server->sctx->recursionquota);
+	if (max > 1000) {
+		unsigned margin = ISC_MAX(100, named_g_cpus + 1);
+		if (margin + 100 > max) {
 			isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 				      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 				      "'recursive-clients %d' too low when "
 				      "running with %d worker threads",
-				      server->sctx->recursionquota.max,
-				      named_g_cpus);
+				      max, named_g_cpus);
 			CHECK(ISC_R_RANGE);
 		}
-		softquota = server->sctx->recursionquota.max - margin;
+		softquota = max - margin;
 	} else {
-		softquota = (server->sctx->recursionquota.max * 90) / 100;
+		softquota = (max * 90) / 100;
 	}
 
 	isc_quota_soft(&server->sctx->recursionquota, softquota);
@@ -11455,13 +11453,14 @@ named_server_status(named_server_t *server, isc_buffer_t **text) {
 	CHECK(putstr(text, line));
 
 	snprintf(line, sizeof(line), "recursive clients: %d/%d/%d\n",
-		     server->sctx->recursionquota.used,
-		     server->sctx->recursionquota.soft,
-		     server->sctx->recursionquota.max);
+		     isc_quota_getused(&server->sctx->recursionquota),
+		     isc_quota_getsoft(&server->sctx->recursionquota),
+		     isc_quota_getmax(&server->sctx->recursionquota));
 	CHECK(putstr(text, line));
 
 	snprintf(line, sizeof(line), "tcp clients: %d/%d\n",
-		     server->sctx->tcpquota.used, server->sctx->tcpquota.max);
+		     isc_quota_getused(&server->sctx->tcpquota),
+		     isc_quota_getmax(&server->sctx->tcpquota));
 	CHECK(putstr(text, line));
 
 	if (server->reload_in_progress) {
@@ -12730,8 +12729,8 @@ newzone_parse(named_server_t *server, char *command, dns_view_t **viewp,
 	isc_buffer_forward(&argbuf, 3);
 
 	cfg_parser_reset(named_g_addparser);
-	CHECK(cfg_parse_buffer3(named_g_addparser, &argbuf, bn, 0,
-				&cfg_type_addzoneconf, &zoneconf));
+	CHECK(cfg_parse_buffer(named_g_addparser, &argbuf, bn, 0,
+			       &cfg_type_addzoneconf, 0, &zoneconf));
 	CHECK(cfg_map_get(zoneconf, "zone", &zlist));
 	if (!cfg_obj_islist(zlist))
 		CHECK(ISC_R_FAILURE);
